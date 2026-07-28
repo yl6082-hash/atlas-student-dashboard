@@ -27,6 +27,22 @@ type News = {
   observedAt: string;
 };
 
+type StudentProfile = {
+  name: string;
+  entryYear: string;
+  targetSchool: string;
+  intendedMajor: string;
+  sat: string;
+};
+
+const defaultProfile: StudentProfile = {
+  name: "Vincent",
+  entryYear: "2027",
+  targetSchool: "Cornell",
+  intendedMajor: "计算机科学",
+  sat: "1510",
+};
+
 const initialTasks: Task[] = [
   {
     id: 1,
@@ -63,6 +79,8 @@ const navItems = [
 
 export default function Home() {
   const [tasks, setTasks] = useState(initialTasks);
+  const [profile, setProfile] = useState<StudentProfile>(defaultProfile);
+  const [profileOpen, setProfileOpen] = useState(false);
   const [activeNav, setActiveNav] = useState("今日");
   const [mobileOpen, setMobileOpen] = useState(false);
   const [toast, setToast] = useState("");
@@ -72,6 +90,10 @@ export default function Home() {
 
   const completed = tasks.filter((task) => task.done).length;
   const remaining = tasks.length - completed;
+  const isCornell = profile.targetSchool === "Cornell";
+  const focusTask = isCornell && !profile.sat
+    ? { title: "确定首次 SAT 考试时间", description: "Cornell 对你的入学年份要求提交 SAT 或 ACT。先确定一场可执行的首次考试。", reason: "目标学校的标化要求已经明确，先锁定考试时间比继续分散准备更重要。", duration: "15" }
+    : { title: "完成 Common App 活动列表初稿", description: "先写最重要的 5 项活动。目标是把“做过什么”变成“产生了什么影响”。", reason: "你的标化已进入目标区间，活动表达是当前回报最高的提升项。", duration: "35" };
 
   function notify(message: string) {
     setToast(message);
@@ -84,6 +106,27 @@ export default function Home() {
     );
   }
 
+  function navigate(label: string) {
+    const targets: Record<string, string> = {
+      "今日": "today",
+      "学校情报": "school-intelligence",
+      "申请计划": "upcoming-plan",
+    };
+    setActiveNav(label);
+    setMobileOpen(false);
+    if (label === "AI 顾问") {
+      setProfileOpen(true);
+      return;
+    }
+    document.getElementById(targets[label])?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function saveProfile() {
+    window.localStorage.setItem("atlas-demo-profile", JSON.stringify(profile));
+    setProfileOpen(false);
+    notify("体验资料已保存，首页已按你的目标更新");
+  }
+
   useEffect(() => {
     fetch("/api/intelligence")
       .then(async (response) => {
@@ -92,6 +135,12 @@ export default function Home() {
       })
       .then(({ items }) => { setNewsItems(items); setNewsStatus("ready"); })
       .catch(() => setNewsStatus("unavailable"));
+  }, []);
+
+  useEffect(() => {
+    const saved = window.localStorage.getItem("atlas-demo-profile");
+    if (!saved) return;
+    try { setProfile({ ...defaultProfile, ...(JSON.parse(saved) as Partial<StudentProfile>) }); } catch { /* Ignore invalid local demo state. */ }
   }, []);
 
   return (
@@ -109,9 +158,7 @@ export default function Home() {
               key={label}
               className={activeNav === label ? "nav-item active" : "nav-item"}
               onClick={() => {
-                setActiveNav(label);
-                setMobileOpen(false);
-                if (label !== "今日") notify(`${label}将在下一阶段开放`);
+                navigate(label);
               }}
             >
               <span>{icon}</span>{label}
@@ -128,9 +175,9 @@ export default function Home() {
         </div>
 
         <div className="user-row">
-          <span className="avatar">V</span>
-          <span><strong>Vincent</strong><small>2027 秋季入学</small></span>
-          <button onClick={() => notify("个人档案将在下一阶段开放")}>···</button>
+          <span className="avatar">{profile.name.slice(0, 1).toUpperCase()}</span>
+          <span><strong>{profile.name}</strong><small>{profile.entryYear} 秋季入学</small></span>
+          <button onClick={() => setProfileOpen(true)} aria-label="编辑体验资料">···</button>
         </div>
       </aside>
 
@@ -147,29 +194,29 @@ export default function Home() {
         </header>
 
         <div className="dashboard">
-          <section className="welcome">
+          <section className="welcome" id="today">
             <div>
               <p className="eyebrow">7月28日 · 星期二</p>
-              <h1>早上好，Vincent</h1>
+              <h1>早上好，{profile.name}</h1>
               <p>今天只需要推进 <strong>{remaining} 件事</strong>。最重要的一步已经为你排好。</p>
             </div>
-            <div className="deadline-chip"><span>距离 Cornell ED</span><strong>95 天</strong></div>
+            <div className="deadline-chip"><span>关注学校：{profile.targetSchool}</span><strong>{profile.entryYear}</strong></div>
           </section>
 
           <section className="focus-card">
             <div className="focus-copy">
               <div className="focus-label"><span>01</span> 当前任务</div>
-              <h2>完成 Common App 活动列表初稿</h2>
-              <p>先写最重要的 5 项活动。目标是把“做过什么”变成“产生了什么影响”。</p>
+              <h2>{focusTask.title}</h2>
+              <p>{focusTask.description}</p>
               <div className="focus-reason">
                 <span>✦</span>
-                <p><strong>为什么现在做</strong>你的标化已进入目标区间，活动表达是当前回报最高的提升项。</p>
+                <p><strong>为什么现在做</strong>{focusTask.reason}</p>
               </div>
             </div>
             <div className="focus-action">
               <span>预计用时</span>
-              <strong>35<small>分钟</small></strong>
-              <button onClick={() => notify("专注模式已开始 · 35:00")}>开始任务 <b>→</b></button>
+              <strong>{focusTask.duration}<small>分钟</small></strong>
+              <button onClick={() => notify(`专注模式已开始 · ${focusTask.duration}:00`)}>开始任务 <b>→</b></button>
             </div>
           </section>
 
@@ -202,7 +249,7 @@ export default function Home() {
               </div>
             </section>
 
-            <aside className="briefing">
+            <aside className="briefing" id="upcoming-plan">
               <div className="section-heading">
                 <div><span>需要留意</span><h3>近期节点</h3></div>
                 <button onClick={() => notify("完整计划将在下一阶段开放")}>查看计划 →</button>
@@ -224,7 +271,7 @@ export default function Home() {
             </aside>
           </div>
 
-          <section className="news-section">
+          <section className="news-section" id="school-intelligence">
             <div className="section-heading news-heading">
               <div><span>与你相关的变化</span><h3>学校新闻与影响判断</h3></div>
               <p>不是新闻聚合，而是告诉你：发生了什么、与你有什么关系、下一步做什么。</p>
@@ -259,6 +306,25 @@ export default function Home() {
       </section>
 
       {toast && <div className="toast">✓ {toast}</div>}
+
+      {profileOpen && (
+        <div className="modal-backdrop" onClick={() => setProfileOpen(false)}>
+          <section className="profile-modal" onClick={(event) => event.stopPropagation()}>
+            <button className="modal-close" onClick={() => setProfileOpen(false)} aria-label="关闭体验设置">×</button>
+            <p className="eyebrow">体验设置</p>
+            <h2>让 Atlas 先认识你</h2>
+            <p className="profile-intro">这些资料只保存在当前设备，用于让体验页的首页提示更贴近你的申请目标。</p>
+            <label>你的称呼<input value={profile.name} onChange={(event) => setProfile((current) => ({ ...current, name: event.target.value }))} maxLength={20} /></label>
+            <div className="profile-grid">
+              <label>目标入学年份<select value={profile.entryYear} onChange={(event) => setProfile((current) => ({ ...current, entryYear: event.target.value }))}><option>2027</option><option>2028</option><option>2029</option></select></label>
+              <label>当前 SAT（可留空）<input value={profile.sat} onChange={(event) => setProfile((current) => ({ ...current, sat: event.target.value.replace(/[^0-9]/g, "") }))} placeholder="例如 1510" inputMode="numeric" /></label>
+            </div>
+            <label>重点关注学校<select value={profile.targetSchool} onChange={(event) => setProfile((current) => ({ ...current, targetSchool: event.target.value }))}><option>Cornell</option><option>UC Davis</option><option>NYU</option><option>CMU</option><option>Stanford</option></select></label>
+            <label>意向专业<input value={profile.intendedMajor} onChange={(event) => setProfile((current) => ({ ...current, intendedMajor: event.target.value }))} placeholder="例如 计算机科学" /></label>
+            <button className="modal-primary" onClick={saveProfile}>保存并更新首页</button>
+          </section>
+        </div>
+      )}
 
       {selectedNews && (
         <div className="modal-backdrop" onClick={() => setSelectedNews(null)}>
