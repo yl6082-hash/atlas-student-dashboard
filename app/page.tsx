@@ -87,10 +87,19 @@ export default function Home() {
   const [selectedNews, setSelectedNews] = useState<News | null>(null);
   const [newsItems, setNewsItems] = useState<News[]>([]);
   const [newsStatus, setNewsStatus] = useState<"loading" | "ready" | "unavailable">("loading");
+  const [newsFilter, setNewsFilter] = useState("全部");
 
   const completed = tasks.filter((task) => task.done).length;
   const remaining = tasks.length - completed;
   const isCornell = profile.targetSchool === "Cornell";
+  const newsSchools = Array.from(new Set(newsItems.map((item) => item.schoolName)));
+  const visibleNews = newsFilter === "全部"
+    ? newsItems
+    : newsItems.filter((item) => item.schoolName === newsFilter);
+  const latestNewsAt = newsItems.reduce<string | null>((latest, item) => {
+    if (!latest || new Date(item.observedAt) > new Date(latest)) return item.observedAt;
+    return latest;
+  }, null);
   const focusTask = isCornell && !profile.sat
     ? { title: "确定首次 SAT 考试时间", description: "Cornell 对你的入学年份要求提交 SAT 或 ACT。先确定一场可执行的首次考试。", reason: "目标学校的标化要求已经明确，先锁定考试时间比继续分散准备更重要。", duration: "15" }
     : { title: "完成 Common App 活动列表初稿", description: "先写最重要的 5 项活动。目标是把“做过什么”变成“产生了什么影响”。", reason: "你的标化已进入目标区间，活动表达是当前回报最高的提升项。", duration: "35" };
@@ -274,11 +283,29 @@ export default function Home() {
           <section className="news-section" id="school-intelligence">
             <div className="section-heading news-heading">
               <div><span>官网重点与最新变化</span><h3>学校新闻与影响判断</h3></div>
-              <p>官网重点会直接展示；新的政策变化经核验后，再告诉你影响和下一步。</p>
+              <p>每 6 小时检查招生要求、截止日期和官方新闻；重要变化经核验后再展示。</p>
+            </div>
+
+            <div className="news-toolbar">
+              <div className="news-filters" aria-label="按学校筛选情报">
+                {["全部", ...newsSchools].map((school) => (
+                  <button
+                    className={newsFilter === school ? "active" : ""}
+                    key={school}
+                    onClick={() => setNewsFilter(school)}
+                  >
+                    {school === "New York University" ? "NYU" : school === "Carnegie Mellon University" ? "CMU" : school === "Cornell University" ? "Cornell" : school === "Stanford University" ? "Stanford" : school}
+                  </button>
+                ))}
+              </div>
+              <span className="news-updated">
+                <i />
+                {latestNewsAt ? `最近同步 ${new Date(latestNewsAt).toLocaleDateString("zh-CN")}` : "等待首次同步"}
+              </span>
             </div>
 
             <div className="news-list">
-              {newsItems.map((item) => (
+              {visibleNews.map((item) => (
                 <article className="news-card" key={item.id}>
                   <div className="news-school">
                     <span className="school-mark" style={{ background: item.schoolAccent }}>{item.schoolCode}</span>
@@ -299,6 +326,7 @@ export default function Home() {
               ))}
               {newsStatus === "loading" && <div className="news-empty"><strong>正在读取已核验的学校情报…</strong></div>}
               {newsStatus === "ready" && newsItems.length === 0 && <div className="news-empty"><strong>暂无已核验更新</strong><p>新的官方页面变化会先进入顾问审核，确认后才会显示在这里。</p></div>}
+              {newsStatus === "ready" && newsItems.length > 0 && visibleNews.length === 0 && <div className="news-empty"><strong>这所学校暂无已核验更新</strong><p>系统仍会按计划检查官方来源，有重要变化后会显示在这里。</p></div>}
               {newsStatus === "unavailable" && <div className="news-empty"><strong>学校情报服务正在连接</strong><p>请稍后刷新。学生端不会展示未核验的演示内容。</p></div>}
             </div>
           </section>
