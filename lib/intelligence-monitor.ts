@@ -25,6 +25,28 @@ type SourceSnapshot = {
   content: string;
 };
 
+function serializeSnapshot(snapshot: SourceSnapshot) {
+  return JSON.stringify({
+    hash: snapshot.fingerprint,
+    content: snapshot.content,
+  });
+}
+
+function deserializeSnapshot(value: string | null): SourceSnapshot {
+  if (!value) return { fingerprint: "", content: "" };
+  if (!value.startsWith("{")) return { fingerprint: value, content: "" };
+
+  try {
+    const parsed = JSON.parse(value) as { hash?: unknown; content?: unknown };
+    return {
+      fingerprint: typeof parsed.hash === "string" ? parsed.hash : "",
+      content: typeof parsed.content === "string" ? parsed.content : "",
+    };
+  } catch {
+    return { fingerprint: value, content: "" };
+  }
+}
+
 export type MonitorResult = {
   initialized: number;
   unchanged: number;
@@ -224,20 +246,23 @@ export async function runOfficialSourceMonitor(
           label: source.label,
           url: source.url,
           kind: source.kind,
-          lastFingerprint: snapshot.fingerprint,
-          lastContent: snapshot.content,
+          lastFingerprint: serializeSnapshot(snapshot),
           lastCheckedAt: now,
         });
         result.initialized += 1;
         continue;
       }
 
-      if (!existing.lastFingerprint || existing.lastFingerprint === snapshot.fingerprint) {
+      const previousSnapshot = deserializeSnapshot(existing.lastFingerprint);
+
+      if (
+        !previousSnapshot.fingerprint ||
+        previousSnapshot.fingerprint === snapshot.fingerprint
+      ) {
         await db
           .update(schoolSources)
           .set({
-            lastFingerprint: snapshot.fingerprint,
-            lastContent: snapshot.content,
+            lastFingerprint: serializeSnapshot(snapshot),
             lastCheckedAt: now,
           })
           .where(eq(schoolSources.id, existing.id));
@@ -245,7 +270,7 @@ export async function runOfficialSourceMonitor(
         continue;
       }
 
-      const diff = buildDiff(existing.lastContent ?? "", snapshot.content);
+      const diff = buildDiff(previousSnapshot.content, snapshot.content);
       const aiSummary = await summarizeWithAi(env.AI, source, diff);
       const summary = aiSummary ?? fallbackSummary(source, diff);
 
@@ -267,8 +292,7 @@ export async function runOfficialSourceMonitor(
       await db
         .update(schoolSources)
         .set({
-          lastFingerprint: snapshot.fingerprint,
-          lastContent: snapshot.content,
+          lastFingerprint: serializeSnapshot(snapshot),
           lastCheckedAt: now,
         })
         .where(eq(schoolSources.id, existing.id));
