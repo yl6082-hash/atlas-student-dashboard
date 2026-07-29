@@ -274,7 +274,7 @@ export default function Home() {
           <section className="news-section" id="school-intelligence">
             <div className="section-heading news-heading">
               <div><span>官网重点与最新变化</span><h3>学校新闻与影响判断</h3></div>
-              <p>不是新闻聚合，而是告诉你：发生了什么、与你有什么关系、下一步做什么。</p>
+              <p>官网重点会直接展示；新的政策变化经核验后，再告诉你影响和下一步。</p>
             </div>
 
             <div className="news-list">
