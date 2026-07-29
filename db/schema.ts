@@ -11,6 +11,7 @@ export const schoolSources = sqliteTable("school_sources", {
   kind: text("kind").notNull(),
   isActive: integer("is_active", { mode: "boolean" }).notNull().default(true),
   lastFingerprint: text("last_fingerprint"),
+  lastContent: text("last_content"),
   lastCheckedAt: text("last_checked_at"),
   createdAt: text("created_at").notNull().default(sql`CURRENT_TIMESTAMP`),
 });
