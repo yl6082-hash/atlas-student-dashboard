@@ -162,7 +162,7 @@ export default function Home() {
               }}
             >
               <span>{icon}</span>{label}
-              {label === "学校情报" && <em>3</em>}
+              {label === "学校情报" && <em>{newsStatus === "ready" ? newsItems.length : "…"}</em>}
             </button>
           ))}
         </nav>
@@ -273,7 +273,7 @@ export default function Home() {
 
           <section className="news-section" id="school-intelligence">
             <div className="section-heading news-heading">
-              <div><span>与你相关的变化</span><h3>学校新闻与影响判断</h3></div>
+              <div><span>官网重点与最新变化</span><h3>学校新闻与影响判断</h3></div>
               <p>不是新闻聚合，而是告诉你：发生了什么、与你有什么关系、下一步做什么。</p>
             </div>
 
