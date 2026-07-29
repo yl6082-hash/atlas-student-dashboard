@@ -1,6 +1,7 @@
-import { and, desc, eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { getDb } from "@/db";
 import { intelligenceItems } from "@/db/schema";
+import { verifiedSchoolBriefs } from "@/data/verified-school-briefs";
 
 function errorMessage(error: unknown) {
   return error instanceof Error ? error.message : "Unexpected error";
@@ -15,9 +16,16 @@ export async function GET() {
       .where(eq(intelligenceItems.reviewStatus, "verified"))
       .orderBy(desc(intelligenceItems.observedAt), desc(intelligenceItems.id))
       .limit(12);
-    return Response.json({ items: rows });
+    const items = [...rows, ...verifiedSchoolBriefs]
+      .sort((a, b) => Date.parse(b.observedAt) - Date.parse(a.observedAt))
+      .slice(0, 12);
+    return Response.json({ items });
   } catch (error) {
-    return Response.json({ items: [], error: errorMessage(error) }, { status: 503 });
+    return Response.json({
+      items: verifiedSchoolBriefs,
+      degraded: true,
+      error: errorMessage(error),
+    });
   }
 }
 
